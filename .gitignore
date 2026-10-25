@@ -1,0 +1,9 @@
+# Secrets: the real .env must never be committed
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
