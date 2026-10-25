@@ -1,52 +1,7 @@
-# HW-2 Answers
+1. Docker Compose creates a user-defined network for the project, and Docker's built-in DNS server on that network resolves each service name to the container's current IP address. My app uses `DB_HOST=db`, so when it connects to `db`, the DNS returns the PostgreSQL container's IP (I checked this with `docker compose exec app getent hosts db`). I did not use `localhost`, because inside the app container it points to the app itself, and I did not use an IP address because it can change when the container is recreated. The default `bridge` network used by plain `docker run` has no name-based DNS, so containers on it can only reach each other by IP address.
 
-<!--
-  NOTE TO SELF: the assignment says the answers must be in MY OWN WORDS.
-  Replace each "TODO" with 3-6 of my own sentences, then delete the
-  "Key points" lists and this comment. The test results below are real
-  (I ran them), keep them as evidence.
--->
+2. The `app` service is stateless because it does not write any data to its own disk; the visit counter is stored in PostgreSQL. The `db` service is stateful because its data lives in the named volume `pgdata`. To test this, I called `/visit` twice (1, 2), then ran `docker compose rm -sf app` and started it again; the counter continued at 3. After `docker compose down` and `up`, it continued at 4, because `down` removes containers and the network but keeps volumes. After `docker compose down -v`, the volume was deleted and the counter started again from 1.
 
-## 1. How does the app reach the database by name?
+3. A database password should come from the environment at runtime, not from the code or `compose.yaml`. In my project it is stored in a `.env` file that is listed in `.gitignore`, and Compose reads it as `${DB_PASSWORD}`; only `.env.example` with fake values is committed. Committing a real password is a problem even in a private repository, because Git keeps it in the history forever, even if the line is deleted later. Everyone with access, every clone, fork, backup and CI system gets a copy, and the repository may become public or leak in the future. If a password is ever committed, it must be changed, not just removed from the file.
 
-TODO (3-6 sentences)
-
-Key points to cover:
-- Compose creates a user-defined network for the project (`<project>_default`).
-- Docker's embedded DNS on that network resolves the service name `db` to the container IP
-  (`docker compose exec app getent hosts db` -> `172.18.0.2  db`).
-- The app gets `DB_HOST=db` from `compose.yaml`; no IP or `localhost` (inside the app container `localhost` is the app itself).
-- The default `bridge` network used by plain `docker run` has no name-based DNS, so names do not resolve there.
-
-## 2. Which service is stateless, which is not? Evidence
-
-TODO (3-6 sentences)
-
-What I did and what happened (`curl localhost:8000/visit` after each step):
-
-| Step | Result |
-|---|---|
-| `docker compose up -d --build`, two requests | `{"visits":1}`, `{"visits":2}` |
-| `docker compose rm -sf app`, then `docker compose up -d` | `{"visits":3}` (data kept) |
-| `docker compose down`, then `docker compose up -d` | `{"visits":4}` (data kept) |
-| `docker compose down -v`, then `docker compose up -d` | `{"visits":1}` (data gone) |
-
-Key points to cover:
-- `app` is stateless: it writes nothing to its own disk, so deleting the container loses nothing.
-- `db` is stateful: its data lives in the named volume `pgdata`.
-- `down` removes containers and the network but keeps volumes; `down -v` also deletes the volume.
-
-## 3. Where should a database password come from?
-
-TODO (3-6 sentences)
-
-Key points to cover:
-- From the environment at run time: here a `.env` file (ignored by Git) read by Compose as `${DB_PASSWORD}`;
-  in production a secret manager / Docker secrets.
-- Git history keeps it forever, even after deleting the line; every clone, fork, backup and CI log has it.
-- "Private" repos are still shared with many people/tools and can leak or become public later.
-- `.env.example` with fake values documents which variables are needed.
-
-## AI usage
-
-TODO (1-2 sentences about how I used an AI assistant)
+AI Usage Note: I used an AI assistant to summarize the assignment and to help me write the `compose.yaml`, the Dockerfile changes and the PostgreSQL code.
